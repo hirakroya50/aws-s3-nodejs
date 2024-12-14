@@ -1,0 +1,12 @@
+{
+  "name": "aws-s3-nodejs",
+  "version": "1.0.0",
+  "main": "index.js",
+  "author": "hirakm0ventures <hirakroya50@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.712.0",
+    "@aws-sdk/s3-request-presigner": "^3.712.0",
+    "dotenv": "^16.4.7"
+  }
+}
