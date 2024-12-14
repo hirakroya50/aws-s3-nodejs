@@ -1,4 +1,9 @@
+const express = require("express");
+const multer = require("multer");
 require("dotenv").config();
+
+const app = express();
+const PORT = 4000;
 const {
   S3Client,
   GetObjectCommand,
@@ -14,6 +19,8 @@ const s3Client = new S3Client({
     secretAccessKey: process.env.SECRET_ACCESS_KEY,
   },
 });
+const upload = multer({ storage: multer.memoryStorage() });
+
 async function putObject(fileName, contentType) {
   console.log(contentType);
 
@@ -33,7 +40,7 @@ async function getOpjectURL(key) {
     Key: key,
   });
 
-  const url = await getSignedUrl(s3Client, command, { expiresIn: 10 });
+  const url = await getSignedUrl(s3Client, command);
 
   return url;
 }
@@ -44,7 +51,7 @@ async function listObject(params) {
     key: "/",
   });
   const result = await s3Client.send(command);
-  console.log(result);
+  return result;
 }
 async function deleteObjectCommand(key) {
   const command = new DeleteObjectCommand({
@@ -53,16 +60,45 @@ async function deleteObjectCommand(key) {
   });
   return await s3Client.send(command);
 }
-async function init() {
-  //   listObject();
-  //   console.log(
-  //     "urlfor :",
-  //     await getOpjectURL("uploads_hirak/user-uploads/photo1734179370128.png")
-  //   );
-  //   console.log(
-  //     "url_foruploading:",
-  //     await putObject(`photo${Date.now()}.png`, "image/png")
-  //   );
-  console.log(await deleteObjectCommand("uploads_hirak"));
-}
-init();
+
+app.get("/", async (req, res) => {
+  try {
+    const files = await listObject();
+    res.json({ files });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to list files" });
+  }
+});
+
+app.get("/file", async (req, res) => {
+  const key = req.params.key;
+  try {
+    const signedUrl = await getOpjectURL(
+      `${"uploads_hirak/user-uploads/video1734178843219.mp4"}`
+    );
+    console.log(signedUrl);
+    res.json({ signedUrl });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to generate access URL" });
+  }
+});
+
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+});
+
+// async function init() {
+//   //   listObject();
+//   //   console.log(
+//   //     "urlfor :",
+//   //     await getOpjectURL("uploads_hirak/user-uploads/photo1734179370128.png")
+//   //   );
+//   //   console.log(
+//   //     "url_foruploading:",
+//   //     await putObject(`photo${Date.now()}.png`, "image/png")
+//   //   );
+//   //   console.log(await deleteObjectCommand("uploads_hirak"));
+// }
+// // init();
