@@ -3,6 +3,7 @@ const multer = require("multer");
 require("dotenv").config();
 
 const app = express();
+app.use(express.json());
 const PORT = 4000;
 const {
   S3Client,
@@ -12,6 +13,7 @@ const {
   DeleteObjectCommand,
 } = require("@aws-sdk/client-s3");
 const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
+
 const s3Client = new S3Client({
   region: process.env.AWS_REGION,
   credentials: {
@@ -19,6 +21,7 @@ const s3Client = new S3Client({
     secretAccessKey: process.env.SECRET_ACCESS_KEY,
   },
 });
+
 const upload = multer({ storage: multer.memoryStorage() });
 
 async function putObject(fileName, contentType) {
@@ -26,7 +29,7 @@ async function putObject(fileName, contentType) {
 
   const command = new PutObjectCommand({
     Bucket: process.env.PRIVET_BUCKET_NAME,
-    Key: `uploads_hirak/user-uploads/${fileName}`, // Correct path formatting
+    Key: `${fileName}`, // Correct path formatting
     ContentType: contentType, // Pass the ContentType dynamically
   });
 
@@ -34,7 +37,7 @@ async function putObject(fileName, contentType) {
   const url = await getSignedUrl(s3Client, command, { expiresIn: 3600 }); // URL valid for 1 hour
   return url;
 }
-async function getOpjectURL(key) {
+async function getOjectURL(key) {
   const command = new GetObjectCommand({
     Bucket: process.env.PRIVET_BUCKET_NAME,
     Key: key,
@@ -61,6 +64,49 @@ async function deleteObjectCommand(key) {
   return await s3Client.send(command);
 }
 
+app.get("/delete", async (req, res) => {
+  const { fileKey } = req.body;
+  try {
+    if (!fileKey) {
+      res.json({
+        status: 0,
+        msg: "plese provide key",
+      });
+    }
+    let deleteFile = await deleteObjectCommand(fileKey);
+
+    res.json({
+      status: 1,
+      deleteFile,
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 0,
+      msg: "error",
+      error,
+    });
+  }
+});
+
+app.get("/getSignUrlForUpload", async (req, res) => {
+  const { format, fileType } = req.body;
+  // console.log(req.body);
+  // console.log(req.query);
+  try {
+    let url = await putObject(`photo${Date.now()}.${format}`, fileType);
+    res.json({
+      msg: "make a put request to this url . with the body binary and chouse a file ",
+      format,
+      fileType,
+      url,
+    });
+  } catch (error) {
+    res.json({
+      data: "sjsjsj",
+    });
+  }
+});
+
 app.get("/", async (req, res) => {
   try {
     const files = await listObject();
@@ -71,34 +117,32 @@ app.get("/", async (req, res) => {
   }
 });
 
-app.get("/file", async (req, res) => {
-  const key = req.params.key;
+app.get("/getobject", async (req, res) => {
+  const { fileKey } = req.body;
+
   try {
-    const signedUrl = await getOpjectURL(
-      `${"uploads_hirak/user-uploads/video1734178843219.mp4"}`
-    );
-    console.log(signedUrl);
-    res.json({ signedUrl });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Failed to generate access URL" });
+    // let fileKey = req.params.key;
+    if (!fileKey) {
+      res.json({
+        status: 0,
+        msg: "plese provide key",
+      });
+    }
+
+    let signedUrl = await getOjectURL(fileKey);
+    res.json({
+      status: 1,
+      signedUrl,
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 0,
+      msg: "error",
+      error,
+    });
   }
 });
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
-
-// async function init() {
-//   //   listObject();
-//   //   console.log(
-//   //     "urlfor :",
-//   //     await getOpjectURL("uploads_hirak/user-uploads/photo1734179370128.png")
-//   //   );
-//   //   console.log(
-//   //     "url_foruploading:",
-//   //     await putObject(`photo${Date.now()}.png`, "image/png")
-//   //   );
-//   //   console.log(await deleteObjectCommand("uploads_hirak"));
-// }
-// // init();
